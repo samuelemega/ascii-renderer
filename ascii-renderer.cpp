@@ -1,3 +1,14 @@
+/**
+ * 
+ * Author: Samuele Mega <samuelemega@gmail.com>
+ * Date: 2021-03-28
+ *
+ * Inspired by Andy Sloane's donut (https://www.a1k0n.net/2006/09/15/obfuscated-c-donut.html).
+ *
+ * Intended for didactic purposes. The code should be heavily optimized.
+ * 
+ * */
+
 #include <float.h>
 #include <math.h>
 
@@ -49,8 +60,8 @@ const double MOBIUS_X_ANGLE_PERIOD = 2000;
 const double MOBIUS_Y_ANGLE_PERIOD = 1800;
 const double MOBIUS_Z_ANGLE_PERIOD = 0;
 
-const double WHIRLIGIG_FOV_WIDTH = 6;
-const double WHIRLIGIG_FOV_HEIGHT = 6;
+const double WHIRLIGIG_FOV_WIDTH = 5;
+const double WHIRLIGIG_FOV_HEIGHT = 5;
 const double WHIRLIGIG_FOV_Z = 3;
 
 const double WHIRLIGIG_U_INTERVAL_START = 0;
@@ -61,8 +72,8 @@ const double WHIRLIGIG_V_INTERVAL_START = 0;
 const double WHIRLIGIG_V_INTERVAL_END = M_PI;
 const double WHIRLIGIG_V_INTERVAL_STEP = 0.05;
 
-const double WHIRLIGIG_X_ANGLE_PERIOD = 1000;
-const double WHIRLIGIG_Y_ANGLE_PERIOD = 800;
+const double WHIRLIGIG_X_ANGLE_PERIOD = 1500;
+const double WHIRLIGIG_Y_ANGLE_PERIOD = 1200;
 const double WHIRLIGIG_Z_ANGLE_PERIOD = 0;
 
 enum SurfaceType { Toroid,
