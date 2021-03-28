@@ -236,6 +236,61 @@ Vector3D computeToroidalSurfaceNormalVersor(double R, double r, double u, double
   return versor;
 }
 
+/* Möbius Strip surface  */
+
+double mobiusSurfaceX(double u, double v) {
+  return (1 + (v / 2) * cos(u / 2)) * cos(u);
+}
+
+double mobiusSurfaceY(double u, double v) {
+  return (1 + (v / 2) * cos(u / 2)) * sin(u);
+}
+
+double mobiusSurfaceZ(double u, double v) {
+  return (v / 2) * sin(u / 2);
+}
+
+Vector3D computeMobiusSurfacePoint(double u, double v) {
+  struct Vector3D point;
+
+  point.x = mobiusSurfaceX(u, v);
+  point.y = mobiusSurfaceY(u, v);
+  point.z = mobiusSurfaceZ(u, v);
+
+  return point;
+}
+
+/* Möbius Strip normal vectors */
+
+double mobiusSurfaceNormalX(double R, double r, double u, double v) {
+  return (1 / 2) * cos(u) * sin(u / 2) - (v / 4) * cos(u / 2) * sin(u / 2) * sin(u) - (v / 8) * sin(u);
+}
+
+double mobiusSurfaceNormalY(double R, double r, double u, double v) {
+  return (1 / 2) * sin(u) * sin(u / 2) + (v / 4) * cos(u / 2) * sin(u / 2) * sin(u) + (v / 8) * cos(u);
+}
+
+double mobiusSurfaceNormalZ(double R, double r, double u, double v) {
+  return -(1 / 2) * cos(u / 2) * (1 + (v / 2) * cos(u / 2));
+}
+
+Vector3D computeMobiusSurfaceNormalVersor(double R, double r, double u, double v) {
+  struct Vector3D vector;
+  struct Vector3D versor;
+
+  vector.x = mobiusSurfaceNormalX(R, r, u, v);
+  vector.y = mobiusSurfaceNormalY(R, r, u, v);
+  vector.z = mobiusSurfaceNormalZ(R, r, u, v);
+
+  double vectorMagnitude = magnitude(vector);
+
+  versor.x = vector.x / vectorMagnitude;
+  versor.y = vector.y / vectorMagnitude;
+  versor.z = vector.z / vectorMagnitude;
+
+  return versor;
+}
+
 /* Helpers */
 
 Vector2D projectionToCanvasMatrix(
