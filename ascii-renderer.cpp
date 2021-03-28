@@ -8,8 +8,8 @@ using namespace std;
 const int CANVAS_WIDTH = 60;
 const int CANVAS_HEIGHT = 60;
 
-const double LIGHT_X = 0;
-const double LIGHT_Y = 0;
+const double LIGHT_X = 10;
+const double LIGHT_Y = -10;
 const double LIGHT_Z = 10;
 
 const double CAMERA_Z = 10;
@@ -49,8 +49,25 @@ const double MOBIUS_X_ANGLE_PERIOD = 2000;
 const double MOBIUS_Y_ANGLE_PERIOD = 1800;
 const double MOBIUS_Z_ANGLE_PERIOD = 0;
 
+const double WHIRLIGIG_FOV_WIDTH = 6;
+const double WHIRLIGIG_FOV_HEIGHT = 6;
+const double WHIRLIGIG_FOV_Z = 3;
+
+const double WHIRLIGIG_U_INTERVAL_START = 0;
+const double WHIRLIGIG_U_INTERVAL_END = 2 * M_PI;
+const double WHIRLIGIG_U_INTERVAL_STEP = 0.05;
+
+const double WHIRLIGIG_V_INTERVAL_START = 0;
+const double WHIRLIGIG_V_INTERVAL_END = M_PI;
+const double WHIRLIGIG_V_INTERVAL_STEP = 0.05;
+
+const double WHIRLIGIG_X_ANGLE_PERIOD = 1000;
+const double WHIRLIGIG_Y_ANGLE_PERIOD = 800;
+const double WHIRLIGIG_Z_ANGLE_PERIOD = 0;
+
 enum SurfaceType { Toroid,
-                   Mobius };
+                   Mobius,
+                   Whirligig };
 
 const SurfaceType SURFACE = Toroid;
 
@@ -325,6 +342,65 @@ Vector3D computeMobiusSurfaceNormalVersor(double u, double v) {
   return versor;
 }
 
+/* Whirligig surface (from https://www.mathworks.com/help/matlab/ref/fsurf.html) */
+
+double whirligigSurfaceRadius(double u, double v) {
+  return 2 + sin(7 * u + 5 * v);
+}
+
+double whirligigSurfaceX(double u, double v) {
+  return whirligigSurfaceRadius(u, v) * sin(v) * cos(u);
+}
+
+double whirligigSurfaceY(double u, double v) {
+  return whirligigSurfaceRadius(u, v) * sin(v) * sin(u);
+}
+
+double whirligigSurfaceZ(double u, double v) {
+  return whirligigSurfaceRadius(u, v) * cos(v);
+}
+
+Vector3D computeWhirligigSurfacePoint(double u, double v) {
+  struct Vector3D point;
+
+  point.x = whirligigSurfaceX(u, v);
+  point.y = whirligigSurfaceY(u, v);
+  point.z = whirligigSurfaceZ(u, v);
+
+  return point;
+}
+
+/* Whirligig normal vectors */
+
+double whirligigSurfaceNormalX(double u, double v) {
+  return sin(v) * (7 * sin(u) * cos(7 * u + 5 * v) + cos(u) * (sin(7 * u + 5 * v) + 2)) * (5 * cos(v) * cos(7 * u + 5 * v) - sin(v) * (sin(7 * u + 5 * v) + 2)) - 7 * sin(u) * cos(v) * cos(7 * u + 5 * v) * (5 * sin(v) * cos(7 * u + 5 * v) + cos(v) * (sin(7 * u + 5 * v) + 2));
+}
+
+double whirligigSurfaceNormalY(double u, double v) {
+  return 7 * cos(u) * cos(v) * cos(7 * u + 5 * v) * (5 * sin(v) * cos(7 * u + 5 * v) + cos(v) * (sin(7 * u + 5 * v) + 2)) - sin(v) * (7 * cos(u) * cos(7 * u + 5 * v) - sin(u) * (sin(7 * u + 5 * v) + 2)) * (5 * cos(v) * cos(7 * u + 5 * v) - sin(v) * (sin(7 * u + 5 * v) + 2));
+}
+
+double whirligigSurfaceNormalZ(double u, double v) {
+  return sin(u) * sin(v) * (5 * sin(v) * cos(7 * u + 5 * v) + cos(v) * (sin(7 * u + 5 * v) + 2)) * (7 * cos(u) * cos(7 * u + 5 * v) - sin(u) * (sin(7 * u + 5 * v) + 2)) - cos(u) * sin(v) * (7 * sin(u) * cos(7 * u + 5 * v) + cos(u) * (sin(7 * u + 5 * v) + 2)) * (5 * sin(v) * cos(7 * u + 5 * v) + cos(v) * (sin(7 * u + 5 * v) + 2));
+}
+
+Vector3D computeWhirligigSurfaceNormalVersor(double u, double v) {
+  struct Vector3D vector;
+  struct Vector3D versor;
+
+  vector.x = whirligigSurfaceNormalX(u, v);
+  vector.y = whirligigSurfaceNormalY(u, v);
+  vector.z = whirligigSurfaceNormalZ(u, v);
+
+  double vectorMagnitude = magnitude(vector);
+
+  versor.x = vector.x / vectorMagnitude;
+  versor.y = vector.y / vectorMagnitude;
+  versor.z = vector.z / vectorMagnitude;
+
+  return versor;
+}
+
 /* Helpers */
 
 Vector2D projectionToCanvasMatrix(
@@ -413,6 +489,18 @@ void render(
       vIntervalStep = MOBIUS_V_INTERVAL_STEP;
 
       break;
+    case Whirligig:
+      fovWidth = WHIRLIGIG_FOV_WIDTH;
+      fovHeight = WHIRLIGIG_FOV_HEIGHT;
+      fovZ = WHIRLIGIG_FOV_Z;
+      uIntervalStart = WHIRLIGIG_U_INTERVAL_START;
+      uIntervalEnd = WHIRLIGIG_U_INTERVAL_END;
+      uIntervalStep = WHIRLIGIG_U_INTERVAL_STEP;
+      vIntervalStart = WHIRLIGIG_V_INTERVAL_START;
+      vIntervalEnd = WHIRLIGIG_V_INTERVAL_END;
+      vIntervalStep = WHIRLIGIG_V_INTERVAL_STEP;
+
+      break;
   }
 
   for (double u = uIntervalStart; u < uIntervalEnd; u = u + uIntervalStep) {
@@ -428,6 +516,11 @@ void render(
         case Mobius:
           surfacePoint = computeMobiusSurfacePoint(u, v);
           surfaceNormal = computeMobiusSurfaceNormalVersor(u, v);
+
+          break;
+        case Whirligig:
+          surfacePoint = computeWhirligigSurfacePoint(u, v);
+          surfaceNormal = computeWhirligigSurfaceNormalVersor(u, v);
 
           break;
       }
@@ -506,8 +599,8 @@ int main() {
 
     struct Vector3D lightPoint;
 
-    lightPoint.x = LIGHT_X + 10 * cos(i / 100);
-    lightPoint.y = LIGHT_Y + 10 * sin(i / 100);
+    lightPoint.x = LIGHT_X;
+    lightPoint.y = LIGHT_Y;
     lightPoint.z = LIGHT_Z;
 
     // /* Rotation angles */
@@ -525,6 +618,13 @@ int main() {
         xAnglePeriod = MOBIUS_X_ANGLE_PERIOD;
         yAnglePeriod = MOBIUS_Y_ANGLE_PERIOD;
         zAnglePeriod = MOBIUS_Z_ANGLE_PERIOD;
+
+        break;
+
+      case Whirligig:
+        xAnglePeriod = WHIRLIGIG_X_ANGLE_PERIOD;
+        yAnglePeriod = WHIRLIGIG_Y_ANGLE_PERIOD;
+        zAnglePeriod = WHIRLIGIG_Z_ANGLE_PERIOD;
 
         break;
     }
