@@ -323,14 +323,12 @@ char computeIntensityCharacter(double intensity, double intensityMaxValue = 1) {
 }
 
 void resetMatrices(
-    double countMatrix[][CANVAS_WIDTH],
-    double absoluteIntensityMatrix[][CANVAS_WIDTH],
-    double averageIntensityMatrix[][CANVAS_WIDTH]) {
+    double depthBufferMatrix[][CANVAS_WIDTH],
+    double absoluteIntensityMatrix[][CANVAS_WIDTH]) {
   for (int y = 0; y < CANVAS_HEIGHT; y++) {
     for (int x = 0; x < CANVAS_WIDTH; x++) {
+      depthBufferMatrix[y][x] = -DBL_MAX;
       absoluteIntensityMatrix[y][x] = 0;
-      averageIntensityMatrix[y][x] = 0;
-      countMatrix[y][x] = 0;
     }
   }
 }
@@ -338,8 +336,8 @@ void resetMatrices(
 void render(
     Vector3D cameraPoint,
     Vector3D lightPoint,
+    double depthBufferMatrix[][CANVAS_WIDTH],
     double absoluteIntensityMatrix[][CANVAS_WIDTH],
-    double countMatrix[][CANVAS_WIDTH],
     double xAngle = 0,
     double yAngle = 0,
     double zAngle = 0) {
@@ -369,31 +367,24 @@ void render(
           CANVAS_HEIGHT,
           CANVAS_WIDTH);
 
-      absoluteIntensityMatrix[matrixCoordinates.y][matrixCoordinates.x] += lightIntensity;
-      countMatrix[matrixCoordinates.y][matrixCoordinates.x] += 1;
+      if (rotatedSurfacePoint.z > depthBufferMatrix[matrixCoordinates.y][matrixCoordinates.x]) {
+        absoluteIntensityMatrix[matrixCoordinates.y][matrixCoordinates.x] = lightIntensity;
+        depthBufferMatrix[matrixCoordinates.y][matrixCoordinates.x] = rotatedSurfacePoint.z;
+      }
     }
   }
 }
 
 void print(
-    double countMatrix[][CANVAS_WIDTH],
-    double absoluteIntensityMatrix[][CANVAS_WIDTH],
-    double averageIntensityMatrix[][CANVAS_WIDTH]) {
-  double maxAverageLightIntensity = 0;
+    double depthBufferMatrix[][CANVAS_WIDTH],
+    double absoluteIntensityMatrix[][CANVAS_WIDTH]) {
+  double maxLightIntensity = 0;
 
   for (int y = 0; y < CANVAS_HEIGHT; y++) {
     for (int x = 0; x < CANVAS_WIDTH; x++) {
-      double averageLightIntensity = -1;
-
-      if (countMatrix[y][x] != 0) {
-        averageLightIntensity = absoluteIntensityMatrix[y][x] / countMatrix[y][x];
+      if (absoluteIntensityMatrix[y][x] > maxLightIntensity) {
+        maxLightIntensity = absoluteIntensityMatrix[y][x];
       }
-
-      if (averageLightIntensity > maxAverageLightIntensity) {
-        maxAverageLightIntensity = averageLightIntensity;
-      }
-
-      averageIntensityMatrix[y][x] = averageLightIntensity;
     }
   }
 
@@ -401,10 +392,10 @@ void print(
 
   for (int y = 0; y < CANVAS_HEIGHT; y++) {
     for (int x = 0; x < CANVAS_WIDTH; x++) {
-      if (averageIntensityMatrix[y][x] == -1) {
+      if (depthBufferMatrix[y][x] == -DBL_MAX) {
         cout << ' ';
       } else {
-        cout << computeIntensityCharacter(averageIntensityMatrix[y][x], maxAverageLightIntensity);
+        cout << computeIntensityCharacter(absoluteIntensityMatrix[y][x], maxLightIntensity);
       }
     }
 
@@ -415,9 +406,8 @@ void print(
 /* Main */
 
 int main() {
-  double countMatrix[CANVAS_HEIGHT][CANVAS_WIDTH];
+  double depthBufferMatrix[CANVAS_HEIGHT][CANVAS_WIDTH];
   double absoluteIntensityMatrix[CANVAS_HEIGHT][CANVAS_WIDTH];
-  double averageIntensityMatrix[CANVAS_HEIGHT][CANVAS_WIDTH];
 
   for (double i = 0;; i += 1) {
     /* Light vector */
@@ -444,22 +434,22 @@ int main() {
 
     /* Resetting matrices */
 
-    resetMatrices(countMatrix, absoluteIntensityMatrix, averageIntensityMatrix);
+    resetMatrices(depthBufferMatrix, absoluteIntensityMatrix);
 
     /* Rendering */
 
     render(
         cameraPoint,
         lightPoint,
+        depthBufferMatrix,
         absoluteIntensityMatrix,
-        countMatrix,
         xAngle,
         yAngle,
         zAngle);
 
     /* Printing */
 
-    print(countMatrix, absoluteIntensityMatrix, averageIntensityMatrix);
+    print(depthBufferMatrix, absoluteIntensityMatrix);
   }
 
   /* Exiting */
