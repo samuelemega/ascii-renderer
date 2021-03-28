@@ -5,29 +5,54 @@
 
 using namespace std;
 
-const double EXTERNAL_RADIUS = 2;
-const double INTERNAL_RADIUS = 1.2;
-
 const int CANVAS_WIDTH = 60;
 const int CANVAS_HEIGHT = 60;
 
-const double FOV_WIDTH = 8;
-const double FOV_HEIGHT = 8;
-
-const double CAMERA_Z = 10;
-const double FOV_Z = 3;
-
-const double LIGHT_X = -10;
-const double LIGHT_Y = -10;
+const double LIGHT_X = 0;
+const double LIGHT_Y = 0;
 const double LIGHT_Z = 10;
 
-const double U_INTERVAL_START = 0;
-const double U_INTERVAL_END = 2 * M_PI;
-const double U_INTERVAL_STEP = 0.05;
+const double CAMERA_Z = 10;
 
-const double V_INTERVAL_START = 0;
-const double V_INTERVAL_END = 2 * M_PI;
-const double V_INTERVAL_STEP = 0.05;
+const double TOROID_EXTERNAL_RADIUS = 2;
+const double TOROID_INTERNAL_RADIUS = 1.2;
+
+const double TOROID_FOV_WIDTH = 6;
+const double TOROID_FOV_HEIGHT = 6;
+const double TOROID_FOV_Z = 3;
+
+const double TOROID_U_INTERVAL_START = 0;
+const double TOROID_U_INTERVAL_END = 2 * M_PI;
+const double TOROID_U_INTERVAL_STEP = 0.05;
+
+const double TOROID_V_INTERVAL_START = 0;
+const double TOROID_V_INTERVAL_END = 2 * M_PI;
+const double TOROID_V_INTERVAL_STEP = 0.02;
+
+const double TOROID_X_ANGLE_PERIOD = 1000;
+const double TOROID_Y_ANGLE_PERIOD = 800;
+const double TOROID_Z_ANGLE_PERIOD = 0;
+
+const double MOBIUS_FOV_WIDTH = 2.5;
+const double MOBIUS_FOV_HEIGHT = 2.5;
+const double MOBIUS_FOV_Z = 3;
+
+const double MOBIUS_U_INTERVAL_START = 0;
+const double MOBIUS_U_INTERVAL_END = 2 * M_PI;
+const double MOBIUS_U_INTERVAL_STEP = 0.05;
+
+const double MOBIUS_V_INTERVAL_START = -1;
+const double MOBIUS_V_INTERVAL_END = 1;
+const double MOBIUS_V_INTERVAL_STEP = 0.02;
+
+const double MOBIUS_X_ANGLE_PERIOD = 2000;
+const double MOBIUS_Y_ANGLE_PERIOD = 1800;
+const double MOBIUS_Z_ANGLE_PERIOD = 0;
+
+enum SurfaceType { Toroid,
+                   Mobius };
+
+const SurfaceType SURFACE = Toroid;
 
 /*
   Vector3D represents a 3D vector of doubles:
@@ -82,6 +107,14 @@ Vector3D computeVersor(Vector3D vector) {
 
   double length = magnitude(vector);
 
+  if (length == 0) {
+    versor.x = vector.x / length;
+    versor.y = vector.y / length;
+    versor.z = vector.z / length;
+
+    return versor;
+  }
+
   versor.x = vector.x / length;
   versor.y = vector.y / length;
   versor.z = vector.z / length;
@@ -129,7 +162,9 @@ Vector3D projectOnPlane(Vector3D sourcePoint, Vector3D vector, double planeZ) {
 Vector3D reflectAcrossNormal(Vector3D vector, Vector3D normal) {
   struct Vector3D reflection;
 
-  if (angleBetweenVectors(vector, normal) > M_PI / 2) {
+  double squaredNormalMagnitude = pow(magnitude(normal), 2);
+
+  if (angleBetweenVectors(vector, normal) > M_PI / 2 || squaredNormalMagnitude == 0) {
     reflection.x = 0;
     reflection.y = 0;
     reflection.z = 0;
@@ -138,7 +173,6 @@ Vector3D reflectAcrossNormal(Vector3D vector, Vector3D normal) {
   }
 
   double vectorAndNormalScalarProduct = scalarProduct(vector, normal);
-  double squaredNormalMagnitude = pow(magnitude(normal), 2);
   double coefficient = 2 * vectorAndNormalScalarProduct / squaredNormalMagnitude;
 
   reflection.x = coefficient * normal.x - vector.x;
@@ -262,25 +296,25 @@ Vector3D computeMobiusSurfacePoint(double u, double v) {
 
 /* Möbius Strip normal vectors */
 
-double mobiusSurfaceNormalX(double R, double r, double u, double v) {
+double mobiusSurfaceNormalX(double u, double v) {
   return (1 / 2) * cos(u) * sin(u / 2) - (v / 4) * cos(u / 2) * sin(u / 2) * sin(u) - (v / 8) * sin(u);
 }
 
-double mobiusSurfaceNormalY(double R, double r, double u, double v) {
+double mobiusSurfaceNormalY(double u, double v) {
   return (1 / 2) * sin(u) * sin(u / 2) + (v / 4) * cos(u / 2) * sin(u / 2) * sin(u) + (v / 8) * cos(u);
 }
 
-double mobiusSurfaceNormalZ(double R, double r, double u, double v) {
+double mobiusSurfaceNormalZ(double u, double v) {
   return -(1 / 2) * cos(u / 2) * (1 + (v / 2) * cos(u / 2));
 }
 
-Vector3D computeMobiusSurfaceNormalVersor(double R, double r, double u, double v) {
+Vector3D computeMobiusSurfaceNormalVersor(double u, double v) {
   struct Vector3D vector;
   struct Vector3D versor;
 
-  vector.x = mobiusSurfaceNormalX(R, r, u, v);
-  vector.y = mobiusSurfaceNormalY(R, r, u, v);
-  vector.z = mobiusSurfaceNormalZ(R, r, u, v);
+  vector.x = mobiusSurfaceNormalX(u, v);
+  vector.y = mobiusSurfaceNormalY(u, v);
+  vector.z = mobiusSurfaceNormalZ(u, v);
 
   double vectorMagnitude = magnitude(vector);
 
@@ -334,6 +368,7 @@ void resetMatrices(
 }
 
 void render(
+    SurfaceType surfaceType,
     Vector3D cameraPoint,
     Vector3D lightPoint,
     double depthBufferMatrix[][CANVAS_WIDTH],
@@ -343,10 +378,59 @@ void render(
     double zAngle = 0) {
   struct Matrix3X3 rotationMatrix = computeRotationMatrix(xAngle, yAngle, zAngle);
 
-  for (double u = U_INTERVAL_START; u < U_INTERVAL_END; u = u + U_INTERVAL_STEP) {
-    for (double v = V_INTERVAL_START; v < V_INTERVAL_END; v = v + V_INTERVAL_STEP) {
-      struct Vector3D surfacePoint = computeToroidalSurfacePoint(EXTERNAL_RADIUS, INTERNAL_RADIUS, u, v);
-      struct Vector3D surfaceNormal = computeToroidalSurfaceNormalVersor(EXTERNAL_RADIUS, INTERNAL_RADIUS, u, v);
+  double fovWidth,
+      fovHeight,
+      fovZ,
+      uIntervalStart,
+      uIntervalEnd,
+      uIntervalStep,
+      vIntervalStart,
+      vIntervalEnd,
+      vIntervalStep;
+
+  switch (surfaceType) {
+    case Toroid:
+      fovWidth = TOROID_FOV_WIDTH;
+      fovHeight = TOROID_FOV_HEIGHT;
+      fovZ = TOROID_FOV_Z;
+      uIntervalStart = TOROID_U_INTERVAL_START;
+      uIntervalEnd = TOROID_U_INTERVAL_END;
+      uIntervalStep = TOROID_U_INTERVAL_STEP;
+      vIntervalStart = TOROID_V_INTERVAL_START;
+      vIntervalEnd = TOROID_V_INTERVAL_END;
+      vIntervalStep = TOROID_V_INTERVAL_STEP;
+
+      break;
+    case Mobius:
+      fovWidth = MOBIUS_FOV_WIDTH;
+      fovHeight = MOBIUS_FOV_HEIGHT;
+      fovZ = MOBIUS_FOV_Z;
+      uIntervalStart = MOBIUS_U_INTERVAL_START;
+      uIntervalEnd = MOBIUS_U_INTERVAL_END;
+      uIntervalStep = MOBIUS_U_INTERVAL_STEP;
+      vIntervalStart = MOBIUS_V_INTERVAL_START;
+      vIntervalEnd = MOBIUS_V_INTERVAL_END;
+      vIntervalStep = MOBIUS_V_INTERVAL_STEP;
+
+      break;
+  }
+
+  for (double u = uIntervalStart; u < uIntervalEnd; u = u + uIntervalStep) {
+    for (double v = vIntervalStart; v < vIntervalEnd; v = v + vIntervalStep) {
+      struct Vector3D surfacePoint, surfaceNormal;
+
+      switch (surfaceType) {
+        case Toroid:
+          surfacePoint = computeToroidalSurfacePoint(TOROID_EXTERNAL_RADIUS, TOROID_INTERNAL_RADIUS, u, v);
+          surfaceNormal = computeToroidalSurfaceNormalVersor(TOROID_EXTERNAL_RADIUS, TOROID_INTERNAL_RADIUS, u, v);
+
+          break;
+        case Mobius:
+          surfacePoint = computeMobiusSurfacePoint(u, v);
+          surfaceNormal = computeMobiusSurfaceNormalVersor(u, v);
+
+          break;
+      }
 
       struct Vector3D rotatedSurfacePoint = matrixVector3DProduct(rotationMatrix, surfacePoint);
       struct Vector3D rotatedSurfaceNormal = matrixVector3DProduct(rotationMatrix, surfaceNormal);
@@ -355,15 +439,15 @@ void render(
       struct Vector3D surfaceToCameraVersor = computeVersor(surfaceToCameraVector);
       struct Vector3D lightVector = computeVector(rotatedSurfacePoint, lightPoint);
       struct Vector3D reflectionVector = reflectAcrossNormal(lightVector, rotatedSurfaceNormal);
-      struct Vector3D projection = projectOnPlane(cameraPoint, surfaceToCameraVersor, FOV_Z);
+      struct Vector3D projection = projectOnPlane(cameraPoint, surfaceToCameraVersor, fovZ);
 
       double reflectionAngle = angleBetweenVectors(surfaceToCameraVector, reflectionVector);
       double lightIntensity = 1 - (reflectionAngle / M_PI);
 
       struct Vector2D matrixCoordinates = projectionToCanvasMatrix(
           projection,
-          FOV_WIDTH,
-          FOV_HEIGHT,
+          fovWidth,
+          fovHeight,
           CANVAS_HEIGHT,
           CANVAS_WIDTH);
 
@@ -409,36 +493,54 @@ int main() {
   double depthBufferMatrix[CANVAS_HEIGHT][CANVAS_WIDTH];
   double absoluteIntensityMatrix[CANVAS_HEIGHT][CANVAS_WIDTH];
 
+  /* Camera point */
+
+  struct Vector3D cameraPoint;
+
+  cameraPoint.x = 0;
+  cameraPoint.y = 0;
+  cameraPoint.z = CAMERA_Z;
+
   for (double i = 0;; i += 1) {
     /* Light vector */
 
     struct Vector3D lightPoint;
 
-    lightPoint.x = LIGHT_X;
-    lightPoint.y = LIGHT_Y;
+    lightPoint.x = LIGHT_X + 10 * cos(i / 100);
+    lightPoint.y = LIGHT_Y + 10 * sin(i / 100);
     lightPoint.z = LIGHT_Z;
 
-    /* Camera point */
+    // /* Rotation angles */
 
-    struct Vector3D cameraPoint;
+    double xAnglePeriod, yAnglePeriod, zAnglePeriod;
 
-    cameraPoint.x = 0;
-    cameraPoint.y = 0;
-    cameraPoint.z = CAMERA_Z;
+    switch (SURFACE) {
+      case Toroid:
+        xAnglePeriod = TOROID_X_ANGLE_PERIOD;
+        yAnglePeriod = TOROID_Y_ANGLE_PERIOD;
+        zAnglePeriod = TOROID_Z_ANGLE_PERIOD;
 
-    /* Rotation angles */
+        break;
+      case Mobius:
+        xAnglePeriod = MOBIUS_X_ANGLE_PERIOD;
+        yAnglePeriod = MOBIUS_Y_ANGLE_PERIOD;
+        zAnglePeriod = MOBIUS_Z_ANGLE_PERIOD;
 
-    double xAngle = M_PI * i / 300;
-    double yAngle = 0;
-    double zAngle = M_PI * i / 240;
+        break;
+    }
 
-    /* Resetting matrices */
+    double xAngle = xAnglePeriod != 0 ? i * 2 * M_PI / xAnglePeriod : 0;
+    double yAngle = yAnglePeriod != 0 ? i * 2 * M_PI / yAnglePeriod : 0;
+    double zAngle = zAnglePeriod != 0 ? i * 2 * M_PI / zAnglePeriod : 0;
+
+    // /* Resetting matrices */
 
     resetMatrices(depthBufferMatrix, absoluteIntensityMatrix);
 
     /* Rendering */
 
     render(
+        SURFACE,
         cameraPoint,
         lightPoint,
         depthBufferMatrix,
