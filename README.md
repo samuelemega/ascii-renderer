@@ -1,7 +1,7 @@
 # ASCII renderer
 
 C++ program to plot 3D surfaces using ASCII art.
-Intended for didactic purposes. The code should be heavily optimized.
+Intended for didactic purposes.
 
 _Inspired by [Andy Sloane's donut](https://www.a1k0n.net/2006/09/15/obfuscated-c-donut.html)._
 

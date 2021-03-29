@@ -5,7 +5,7 @@
  *
  * Inspired by Andy Sloane's donut (https://www.a1k0n.net/2006/09/15/obfuscated-c-donut.html).
  *
- * Intended for didactic purposes. The code should be heavily optimized.
+ * Intended for didactic purposes.
  * 
  * */
 
@@ -502,11 +502,11 @@ char computeIntensityCharacter(double intensity, double intensityMaxValue = 1) {
 
 void resetMatrices(
     double depthBufferMatrix[][CANVAS_WIDTH],
-    double absoluteIntensityMatrix[][CANVAS_WIDTH]) {
+    double lightIntensityMatrix[][CANVAS_WIDTH]) {
   for (int y = 0; y < CANVAS_HEIGHT; y++) {
     for (int x = 0; x < CANVAS_WIDTH; x++) {
       depthBufferMatrix[y][x] = -DBL_MAX;
-      absoluteIntensityMatrix[y][x] = 0;
+      lightIntensityMatrix[y][x] = 0;
     }
   }
 }
@@ -516,13 +516,9 @@ void render(
     Vector3D cameraPoint,
     Vector3D lightPoint,
     double depthBufferMatrix[][CANVAS_WIDTH],
-    double absoluteIntensityMatrix[][CANVAS_WIDTH],
+    double lightIntensityMatrix[][CANVAS_WIDTH],
     double*** precomputedDataMatrix,
-    double xAngle = 0,
-    double yAngle = 0,
-    double zAngle = 0) {
-  struct Matrix3X3 rotationMatrix = computeRotationMatrix(xAngle, yAngle, zAngle);
-
+    Matrix3X3 rotationMatrix) {
   double fovWidth,
       fovHeight,
       fovZ,
@@ -584,39 +580,70 @@ void render(
     double u = uIntervalStart + (double)uIndex * uIntervalStep;
 
     for (int vIndex = 0; vIndex < vIntervalStepsCount; vIndex++) {
-      struct Vector3D surfacePoint, surfaceNormal;
-
       double v = vIntervalStart + (double)vIndex * vIntervalStep;
+
+      /* Computing current surface point and normal vector */
+
+      struct Vector3D surfacePoint, surfaceNormal;
 
       switch (surfaceType) {
         case Toroid:
-          surfacePoint = computeToroidalSurfacePoint(TOROID_EXTERNAL_RADIUS, TOROID_INTERNAL_RADIUS, precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3]);
-          surfaceNormal = computeToroidalSurfaceNormalVersor(TOROID_EXTERNAL_RADIUS, TOROID_INTERNAL_RADIUS, precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3]);
+          surfacePoint = computeToroidalSurfacePoint(TOROID_EXTERNAL_RADIUS,
+                                                     TOROID_INTERNAL_RADIUS,
+                                                     precomputedDataMatrix[uIndex][vIndex][0],
+                                                     precomputedDataMatrix[uIndex][vIndex][1],
+                                                     precomputedDataMatrix[uIndex][vIndex][2],
+                                                     precomputedDataMatrix[uIndex][vIndex][3]);
+
+          surfaceNormal = computeToroidalSurfaceNormalVersor(TOROID_EXTERNAL_RADIUS,
+                                                             TOROID_INTERNAL_RADIUS,
+                                                             precomputedDataMatrix[uIndex][vIndex][0],
+                                                             precomputedDataMatrix[uIndex][vIndex][1],
+                                                             precomputedDataMatrix[uIndex][vIndex][2],
+                                                             precomputedDataMatrix[uIndex][vIndex][3]);
 
           break;
         case Mobius:
-          surfacePoint = computeMobiusSurfacePoint(v, precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3]);
-          surfaceNormal = computeMobiusSurfaceNormalVersor(v, precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3]);
+          surfacePoint = computeMobiusSurfacePoint(v,
+                                                   precomputedDataMatrix[uIndex][vIndex][0],
+                                                   precomputedDataMatrix[uIndex][vIndex][1],
+                                                   precomputedDataMatrix[uIndex][vIndex][2],
+                                                   precomputedDataMatrix[uIndex][vIndex][3]);
+
+          surfaceNormal = computeMobiusSurfaceNormalVersor(v,
+                                                           precomputedDataMatrix[uIndex][vIndex][0],
+                                                           precomputedDataMatrix[uIndex][vIndex][1],
+                                                           precomputedDataMatrix[uIndex][vIndex][2],
+                                                           precomputedDataMatrix[uIndex][vIndex][3]);
 
           break;
         case Whirligig:
-          surfacePoint = computeWhirligigSurfacePoint(precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3], precomputedDataMatrix[uIndex][vIndex][5]);
-          surfaceNormal = computeWhirligigSurfaceNormalVersor(precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3], precomputedDataMatrix[uIndex][vIndex][4], precomputedDataMatrix[uIndex][vIndex][5]);
+          surfacePoint = computeWhirligigSurfacePoint(precomputedDataMatrix[uIndex][vIndex][0],
+                                                      precomputedDataMatrix[uIndex][vIndex][1],
+                                                      precomputedDataMatrix[uIndex][vIndex][2],
+                                                      precomputedDataMatrix[uIndex][vIndex][3],
+                                                      precomputedDataMatrix[uIndex][vIndex][5]);
+
+          surfaceNormal = computeWhirligigSurfaceNormalVersor(precomputedDataMatrix[uIndex][vIndex][0],
+                                                              precomputedDataMatrix[uIndex][vIndex][1],
+                                                              precomputedDataMatrix[uIndex][vIndex][2],
+                                                              precomputedDataMatrix[uIndex][vIndex][3],
+                                                              precomputedDataMatrix[uIndex][vIndex][4],
+                                                              precomputedDataMatrix[uIndex][vIndex][5]);
 
           break;
       }
 
+      /* Rotating surface point and normal vector */
+
       struct Vector3D rotatedSurfacePoint = matrixVector3DProduct(rotationMatrix, surfacePoint);
       struct Vector3D rotatedSurfaceNormal = matrixVector3DProduct(rotationMatrix, surfaceNormal);
 
+      /* Computing point projection on the canvas */
+
       struct Vector3D surfaceToCameraVector = computeVector(rotatedSurfacePoint, cameraPoint);
       struct Vector3D surfaceToCameraVersor = computeVersor(surfaceToCameraVector);
-      struct Vector3D lightVector = computeVector(rotatedSurfacePoint, lightPoint);
-      struct Vector3D reflectionVector = reflectAcrossNormal(lightVector, rotatedSurfaceNormal);
       struct Vector3D projection = projectOnPlane(cameraPoint, surfaceToCameraVersor, fovZ);
-
-      double reflectionAngle = angleBetweenVectors(surfaceToCameraVector, reflectionVector);
-      double lightIntensity = 1 - (reflectionAngle / M_PI);
 
       struct Vector2D matrixCoordinates = projectionToCanvasMatrix(
           projection,
@@ -625,8 +652,16 @@ void render(
           CANVAS_HEIGHT,
           CANVAS_WIDTH);
 
+      /* Computing reflecting light intensity */
+
       if (rotatedSurfacePoint.z > depthBufferMatrix[matrixCoordinates.y][matrixCoordinates.x]) {
-        absoluteIntensityMatrix[matrixCoordinates.y][matrixCoordinates.x] = lightIntensity;
+        struct Vector3D lightVector = computeVector(rotatedSurfacePoint, lightPoint);
+        struct Vector3D reflectionVector = reflectAcrossNormal(lightVector, rotatedSurfaceNormal);
+
+        double reflectionAngle = angleBetweenVectors(surfaceToCameraVector, reflectionVector);
+        double lightIntensity = 1 - (reflectionAngle / M_PI);
+
+        lightIntensityMatrix[matrixCoordinates.y][matrixCoordinates.x] = lightIntensity;
         depthBufferMatrix[matrixCoordinates.y][matrixCoordinates.x] = rotatedSurfacePoint.z;
       }
     }
@@ -635,13 +670,13 @@ void render(
 
 void print(
     double depthBufferMatrix[][CANVAS_WIDTH],
-    double absoluteIntensityMatrix[][CANVAS_WIDTH]) {
+    double lightIntensityMatrix[][CANVAS_WIDTH]) {
   double maxLightIntensity = 0;
 
   for (int y = 0; y < CANVAS_HEIGHT; y++) {
     for (int x = 0; x < CANVAS_WIDTH; x++) {
-      if (absoluteIntensityMatrix[y][x] > maxLightIntensity) {
-        maxLightIntensity = absoluteIntensityMatrix[y][x];
+      if (lightIntensityMatrix[y][x] > maxLightIntensity) {
+        maxLightIntensity = lightIntensityMatrix[y][x];
       }
     }
   }
@@ -653,7 +688,7 @@ void print(
       if (depthBufferMatrix[y][x] == -DBL_MAX) {
         cout << ' ';
       } else {
-        cout << computeIntensityCharacter(absoluteIntensityMatrix[y][x], maxLightIntensity);
+        cout << computeIntensityCharacter(lightIntensityMatrix[y][x], maxLightIntensity);
       }
     }
 
@@ -665,8 +700,50 @@ void print(
 
 int main() {
   double depthBufferMatrix[CANVAS_HEIGHT][CANVAS_WIDTH];
-  double absoluteIntensityMatrix[CANVAS_HEIGHT][CANVAS_WIDTH];
+  double lightIntensityMatrix[CANVAS_HEIGHT][CANVAS_WIDTH];
   double*** precomputedDataMatrix;
+
+  /* Camera point */
+
+  struct Vector3D cameraPoint;
+
+  cameraPoint.x = 0;
+  cameraPoint.y = 0;
+  cameraPoint.z = CAMERA_Z;
+
+  /* Light point */
+
+  struct Vector3D lightPoint;
+
+  lightPoint.x = LIGHT_X;
+  lightPoint.y = LIGHT_Y;
+  lightPoint.z = LIGHT_Z;
+
+  /* Rotation periods */
+
+  double xAnglePeriod, yAnglePeriod, zAnglePeriod;
+
+  switch (SURFACE) {
+    case Toroid:
+      xAnglePeriod = TOROID_X_ANGLE_PERIOD;
+      yAnglePeriod = TOROID_Y_ANGLE_PERIOD;
+      zAnglePeriod = TOROID_Z_ANGLE_PERIOD;
+
+      break;
+    case Mobius:
+      xAnglePeriod = MOBIUS_X_ANGLE_PERIOD;
+      yAnglePeriod = MOBIUS_Y_ANGLE_PERIOD;
+      zAnglePeriod = MOBIUS_Z_ANGLE_PERIOD;
+
+      break;
+
+    case Whirligig:
+      xAnglePeriod = WHIRLIGIG_X_ANGLE_PERIOD;
+      yAnglePeriod = WHIRLIGIG_Y_ANGLE_PERIOD;
+      zAnglePeriod = WHIRLIGIG_Z_ANGLE_PERIOD;
+
+      break;
+  }
 
   /* Precomputing data */
 
@@ -718,56 +795,20 @@ int main() {
       break;
   }
 
-  /* Camera point */
-
-  struct Vector3D cameraPoint;
-
-  cameraPoint.x = 0;
-  cameraPoint.y = 0;
-  cameraPoint.z = CAMERA_Z;
+  /* Rendering cycle */
 
   for (double i = 0;; i += 1) {
-    /* Light vector */
-
-    struct Vector3D lightPoint;
-
-    lightPoint.x = LIGHT_X;
-    lightPoint.y = LIGHT_Y;
-    lightPoint.z = LIGHT_Z;
-
     // /* Rotation angles */
-
-    double xAnglePeriod, yAnglePeriod, zAnglePeriod;
-
-    switch (SURFACE) {
-      case Toroid:
-        xAnglePeriod = TOROID_X_ANGLE_PERIOD;
-        yAnglePeriod = TOROID_Y_ANGLE_PERIOD;
-        zAnglePeriod = TOROID_Z_ANGLE_PERIOD;
-
-        break;
-      case Mobius:
-        xAnglePeriod = MOBIUS_X_ANGLE_PERIOD;
-        yAnglePeriod = MOBIUS_Y_ANGLE_PERIOD;
-        zAnglePeriod = MOBIUS_Z_ANGLE_PERIOD;
-
-        break;
-
-      case Whirligig:
-        xAnglePeriod = WHIRLIGIG_X_ANGLE_PERIOD;
-        yAnglePeriod = WHIRLIGIG_Y_ANGLE_PERIOD;
-        zAnglePeriod = WHIRLIGIG_Z_ANGLE_PERIOD;
-
-        break;
-    }
 
     double xAngle = xAnglePeriod != 0 ? i * 2 * M_PI / xAnglePeriod : 0;
     double yAngle = yAnglePeriod != 0 ? i * 2 * M_PI / yAnglePeriod : 0;
     double zAngle = zAnglePeriod != 0 ? i * 2 * M_PI / zAnglePeriod : 0;
 
+    struct Matrix3X3 rotationMatrix = computeRotationMatrix(xAngle, yAngle, zAngle);
+
     // /* Resetting matrices */
 
-    resetMatrices(depthBufferMatrix, absoluteIntensityMatrix);
+    resetMatrices(depthBufferMatrix, lightIntensityMatrix);
 
     /* Rendering */
 
@@ -776,15 +817,13 @@ int main() {
         cameraPoint,
         lightPoint,
         depthBufferMatrix,
-        absoluteIntensityMatrix,
+        lightIntensityMatrix,
         precomputedDataMatrix,
-        xAngle,
-        yAngle,
-        zAngle);
+        rotationMatrix);
 
     /* Printing */
 
-    print(depthBufferMatrix, absoluteIntensityMatrix);
+    print(depthBufferMatrix, lightIntensityMatrix);
   }
 
   /* Exiting */
