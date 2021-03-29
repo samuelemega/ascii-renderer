@@ -40,6 +40,10 @@ const double TOROID_V_INTERVAL_START = 0;
 const double TOROID_V_INTERVAL_END = 2 * M_PI;
 const double TOROID_V_INTERVAL_STEP = 0.02;
 
+const int TOROID_U_STEPS_COUNT = (TOROID_U_INTERVAL_END - TOROID_U_INTERVAL_START) / TOROID_U_INTERVAL_STEP;
+const int TOROID_V_STEPS_COUNT = (TOROID_V_INTERVAL_END - TOROID_V_INTERVAL_START) / TOROID_V_INTERVAL_STEP;
+const int TOROID_PRECOMPUTED_DATA_COUNT = 4;
+
 const double TOROID_X_ANGLE_PERIOD = 1000;
 const double TOROID_Y_ANGLE_PERIOD = 800;
 const double TOROID_Z_ANGLE_PERIOD = 0;
@@ -56,6 +60,10 @@ const double MOBIUS_V_INTERVAL_START = -1;
 const double MOBIUS_V_INTERVAL_END = 1;
 const double MOBIUS_V_INTERVAL_STEP = 0.02;
 
+const int MOBIUS_U_STEPS_COUNT = (MOBIUS_U_INTERVAL_END - MOBIUS_U_INTERVAL_START) / MOBIUS_U_INTERVAL_STEP;
+const int MOBIUS_V_STEPS_COUNT = (MOBIUS_V_INTERVAL_END - MOBIUS_V_INTERVAL_START) / MOBIUS_V_INTERVAL_STEP;
+const int MOBIUS_PRECOMPUTED_DATA_COUNT = 4;
+
 const double MOBIUS_X_ANGLE_PERIOD = 2000;
 const double MOBIUS_Y_ANGLE_PERIOD = 1800;
 const double MOBIUS_Z_ANGLE_PERIOD = 0;
@@ -71,6 +79,10 @@ const double WHIRLIGIG_U_INTERVAL_STEP = 0.05;
 const double WHIRLIGIG_V_INTERVAL_START = 0;
 const double WHIRLIGIG_V_INTERVAL_END = M_PI;
 const double WHIRLIGIG_V_INTERVAL_STEP = 0.05;
+
+const int WHIRLIGIG_U_STEPS_COUNT = (WHIRLIGIG_U_INTERVAL_END - WHIRLIGIG_U_INTERVAL_START) / WHIRLIGIG_U_INTERVAL_STEP;
+const int WHIRLIGIG_V_STEPS_COUNT = (WHIRLIGIG_V_INTERVAL_END - WHIRLIGIG_V_INTERVAL_START) / WHIRLIGIG_V_INTERVAL_STEP;
+const int WHIRLIGIG_PRECOMPUTED_DATA_COUNT = 6;
 
 const double WHIRLIGIG_X_ANGLE_PERIOD = 1500;
 const double WHIRLIGIG_Y_ANGLE_PERIOD = 1200;
@@ -94,7 +106,7 @@ struct Vector3D {
 
 /*
   Vector2D represents a 2D vector of integers:
-  
+
   [x, y]
 */
 
@@ -104,7 +116,7 @@ struct Vector2D {
 
 /*
   Matrix3X3 represents a 3X3 matrix of doubles:
-  
+
   | x1 y1 z1 |
   | x2 y2 z2 |
   | x3 y3 z3 |
@@ -245,49 +257,49 @@ Matrix3X3 computeRotationMatrix(double xAngle, double yAngle, double zAngle) {
 
 /* Toroidal surface  */
 
-double toroidalSurfaceX(double R, double r, double u, double v) {
-  return (R + r * cos(u)) * cos(v);
+double toroidalSurfaceX(double R, double r, double cosU, double cosV) {
+  return (R + r * cosU) * cosV;
 }
 
-double toroidalSurfaceY(double R, double r, double u, double v) {
-  return (R + r * cos(u)) * sin(v);
+double toroidalSurfaceY(double R, double r, double cosU, double sinV) {
+  return (R + r * cosU) * sinV;
 }
 
-double toroidalSurfaceZ(double R, double r, double u, double v) {
-  return r * sin(u);
+double toroidalSurfaceZ(double R, double r, double sinU) {
+  return r * sinU;
 }
 
-Vector3D computeToroidalSurfacePoint(double R, double r, double u, double v) {
+Vector3D computeToroidalSurfacePoint(double R, double r, double cosU, double cosV, double sinU, double sinV) {
   struct Vector3D point;
 
-  point.x = toroidalSurfaceX(R, r, u, v);
-  point.y = toroidalSurfaceY(R, r, u, v);
-  point.z = toroidalSurfaceZ(R, r, u, v);
+  point.x = toroidalSurfaceX(R, r, cosU, cosV);
+  point.y = toroidalSurfaceY(R, r, cosU, sinV);
+  point.z = toroidalSurfaceZ(R, r, sinU);
 
   return point;
 }
 
 /* Toroidal normal vectors */
 
-double toroidalSurfaceNormalX(double R, double r, double u, double v) {
-  return toroidalSurfaceX(R, r, u, v) * r * cos(u);
+double toroidalSurfaceNormalX(double R, double r, double cosU, double cosV) {
+  return (R + r * cosU) * cosV * r * cosU;
 }
 
-double toroidalSurfaceNormalY(double R, double r, double u, double v) {
-  return toroidalSurfaceY(R, r, u, v) * r * cos(u);
+double toroidalSurfaceNormalY(double R, double r, double cosU, double sinV) {
+  return (R + r * cosU) * sinV * r * cosU;
 }
 
-double toroidalSurfaceNormalZ(double R, double r, double u, double v) {
-  return toroidalSurfaceZ(R, r, u, v) * (R + r * cos(u));
+double toroidalSurfaceNormalZ(double R, double r, double cosU, double sinU) {
+  return r * sinU * (R + r * cosU);
 }
 
-Vector3D computeToroidalSurfaceNormalVersor(double R, double r, double u, double v) {
+Vector3D computeToroidalSurfaceNormalVersor(double R, double r, double cosU, double cosV, double sinU, double sinV) {
   struct Vector3D vector;
   struct Vector3D versor;
 
-  vector.x = toroidalSurfaceNormalX(R, r, u, v);
-  vector.y = toroidalSurfaceNormalY(R, r, u, v);
-  vector.z = toroidalSurfaceNormalZ(R, r, u, v);
+  vector.x = toroidalSurfaceNormalX(R, r, cosU, cosV);
+  vector.y = toroidalSurfaceNormalY(R, r, cosU, sinV);
+  vector.z = toroidalSurfaceNormalZ(R, r, cosU, sinU);
 
   double vectorMagnitude = magnitude(vector);
 
@@ -298,51 +310,66 @@ Vector3D computeToroidalSurfaceNormalVersor(double R, double r, double u, double
   return versor;
 }
 
+void precomputeToroidalData(double*** precomputedDataMatrix) {
+  for (int uIndex = 0; uIndex < TOROID_U_STEPS_COUNT; uIndex += 1) {
+    double u = TOROID_U_INTERVAL_START + (double)uIndex * TOROID_U_INTERVAL_STEP;
+
+    for (int vIndex = 0; vIndex < TOROID_V_STEPS_COUNT; vIndex += 1) {
+      double v = TOROID_V_INTERVAL_START + (double)vIndex * TOROID_V_INTERVAL_STEP;
+
+      precomputedDataMatrix[uIndex][vIndex][0] = cos(u);
+      precomputedDataMatrix[uIndex][vIndex][1] = cos(v);
+      precomputedDataMatrix[uIndex][vIndex][2] = sin(u);
+      precomputedDataMatrix[uIndex][vIndex][3] = sin(v);
+    }
+  }
+}
+
 /* Möbius Strip surface  */
 
-double mobiusSurfaceX(double u, double v) {
-  return (1 + (v / 2) * cos(u / 2)) * cos(u);
+double mobiusSurfaceX(double v, double cosU, double cosUHalf) {
+  return (1 + (v / 2) * cosUHalf) * cosU;
 }
 
-double mobiusSurfaceY(double u, double v) {
-  return (1 + (v / 2) * cos(u / 2)) * sin(u);
+double mobiusSurfaceY(double v, double sinU, double cosUHalf) {
+  return (1 + (v / 2) * cosUHalf) * sinU;
 }
 
-double mobiusSurfaceZ(double u, double v) {
-  return (v / 2) * sin(u / 2);
+double mobiusSurfaceZ(double v, double sinUHalf) {
+  return (v / 2) * sinUHalf;
 }
 
-Vector3D computeMobiusSurfacePoint(double u, double v) {
+Vector3D computeMobiusSurfacePoint(double v, double cosU, double sinU, double cosUHalf, double sinUHalf) {
   struct Vector3D point;
 
-  point.x = mobiusSurfaceX(u, v);
-  point.y = mobiusSurfaceY(u, v);
-  point.z = mobiusSurfaceZ(u, v);
+  point.x = mobiusSurfaceX(v, cosU, cosUHalf);
+  point.y = mobiusSurfaceY(v, sinU, cosUHalf);
+  point.z = mobiusSurfaceZ(v, sinUHalf);
 
   return point;
 }
 
 /* Möbius Strip normal vectors */
 
-double mobiusSurfaceNormalX(double u, double v) {
-  return (1 / 2) * cos(u) * sin(u / 2) - (v / 4) * cos(u / 2) * sin(u / 2) * sin(u) - (v / 8) * sin(u);
+double mobiusSurfaceNormalX(double v, double cosU, double sinU, double cosUHalf, double sinUHalf) {
+  return (1 / 2) * cosU * sinUHalf - (v / 4) * cosUHalf * sinUHalf * sinU - (v / 8) * sinU;
 }
 
-double mobiusSurfaceNormalY(double u, double v) {
-  return (1 / 2) * sin(u) * sin(u / 2) + (v / 4) * cos(u / 2) * sin(u / 2) * sin(u) + (v / 8) * cos(u);
+double mobiusSurfaceNormalY(double v, double cosU, double sinU, double cosUHalf, double sinUHalf) {
+  return (1 / 2) * sinU * sinUHalf + (v / 4) * cosUHalf * sinUHalf * sinU + (v / 8) * cosU;
 }
 
-double mobiusSurfaceNormalZ(double u, double v) {
-  return -(1 / 2) * cos(u / 2) * (1 + (v / 2) * cos(u / 2));
+double mobiusSurfaceNormalZ(double v, double cosUHalf) {
+  return -(1 / 2) * cosUHalf * (1 + (v / 2) * cosUHalf);
 }
 
-Vector3D computeMobiusSurfaceNormalVersor(double u, double v) {
+Vector3D computeMobiusSurfaceNormalVersor(double v, double cosU, double sinU, double cosUHalf, double sinUHalf) {
   struct Vector3D vector;
   struct Vector3D versor;
 
-  vector.x = mobiusSurfaceNormalX(u, v);
-  vector.y = mobiusSurfaceNormalY(u, v);
-  vector.z = mobiusSurfaceNormalZ(u, v);
+  vector.x = mobiusSurfaceNormalX(v, cosU, sinU, cosUHalf, sinUHalf);
+  vector.y = mobiusSurfaceNormalY(v, cosU, sinU, cosUHalf, sinUHalf);
+  vector.z = mobiusSurfaceNormalZ(v, cosUHalf);
 
   double vectorMagnitude = magnitude(vector);
 
@@ -353,55 +380,69 @@ Vector3D computeMobiusSurfaceNormalVersor(double u, double v) {
   return versor;
 }
 
+void precomputeMobiusData(double*** precomputedDataMatrix) {
+  for (int uIndex = 0; uIndex < MOBIUS_U_STEPS_COUNT; uIndex += 1) {
+    for (int vIndex = 0; vIndex < MOBIUS_V_STEPS_COUNT; vIndex += 1) {
+      double u = MOBIUS_U_INTERVAL_START + (double)uIndex * MOBIUS_U_INTERVAL_STEP;
+      double v = MOBIUS_V_INTERVAL_START + (double)vIndex * MOBIUS_V_INTERVAL_STEP;
+
+      precomputedDataMatrix[uIndex][vIndex][0] = cos(u);
+      precomputedDataMatrix[uIndex][vIndex][1] = sin(u);
+      precomputedDataMatrix[uIndex][vIndex][2] = cos(u / 2);
+      precomputedDataMatrix[uIndex][vIndex][3] = sin(u / 2);
+    }
+  }
+}
+
 /* Whirligig surface (from https://www.mathworks.com/help/matlab/ref/fsurf.html) */
 
-double whirligigSurfaceRadius(double u, double v) {
-  return 2 + sin(7 * u + 5 * v);
+double whirligigSurfaceRadius(double sin7U5V) {
+  return 2 + sin7U5V;
 }
 
-double whirligigSurfaceX(double u, double v) {
-  return whirligigSurfaceRadius(u, v) * sin(v) * cos(u);
+double whirligigSurfaceX(double cosU, double sinV, double sin7U5V) {
+  return whirligigSurfaceRadius(sin7U5V) * sinV * cosU;
 }
 
-double whirligigSurfaceY(double u, double v) {
-  return whirligigSurfaceRadius(u, v) * sin(v) * sin(u);
+double whirligigSurfaceY(double sinU, double sinV, double sin7U5V) {
+  return whirligigSurfaceRadius(sin7U5V) * sinV * sinU;
 }
 
-double whirligigSurfaceZ(double u, double v) {
-  return whirligigSurfaceRadius(u, v) * cos(v);
+double whirligigSurfaceZ(double cosV, double sin7U5V) {
+  return whirligigSurfaceRadius(sin7U5V) * cosV;
 }
 
-Vector3D computeWhirligigSurfacePoint(double u, double v) {
+Vector3D computeWhirligigSurfacePoint(double cosU, double sinU, double cosV, double sinV, double sin7U5V) {
   struct Vector3D point;
 
-  point.x = whirligigSurfaceX(u, v);
-  point.y = whirligigSurfaceY(u, v);
-  point.z = whirligigSurfaceZ(u, v);
+  point.x = whirligigSurfaceX(cosU, sinV, sin7U5V);
+  point.y = whirligigSurfaceY(sinU, sinV, sin7U5V);
+  point.z = whirligigSurfaceZ(cosV, sin7U5V);
 
   return point;
 }
 
 /* Whirligig normal vectors */
 
-double whirligigSurfaceNormalX(double u, double v) {
-  return sin(v) * (7 * sin(u) * cos(7 * u + 5 * v) + cos(u) * (sin(7 * u + 5 * v) + 2)) * (5 * cos(v) * cos(7 * u + 5 * v) - sin(v) * (sin(7 * u + 5 * v) + 2)) - 7 * sin(u) * cos(v) * cos(7 * u + 5 * v) * (5 * sin(v) * cos(7 * u + 5 * v) + cos(v) * (sin(7 * u + 5 * v) + 2));
+double whirligigSurfaceNormalX(double cosU, double sinU, double cosV, double sinV, double cos7U5V, double sin7U5V) {
+  return sinV * (7 * sinU * cos7U5V + cosU * (sin7U5V + 2)) * (5 * cosV * cos7U5V - sinV * (sin7U5V + 2)) - 7 * sinU * cosV * cos7U5V * (5 * sinV * cos7U5V + cosV * (sin7U5V + 2));
 }
 
-double whirligigSurfaceNormalY(double u, double v) {
-  return 7 * cos(u) * cos(v) * cos(7 * u + 5 * v) * (5 * sin(v) * cos(7 * u + 5 * v) + cos(v) * (sin(7 * u + 5 * v) + 2)) - sin(v) * (7 * cos(u) * cos(7 * u + 5 * v) - sin(u) * (sin(7 * u + 5 * v) + 2)) * (5 * cos(v) * cos(7 * u + 5 * v) - sin(v) * (sin(7 * u + 5 * v) + 2));
+double whirligigSurfaceNormalY(double cosU, double sinU, double cosV, double sinV, double cos7U5V, double sin7U5V) {
+  return 7 * cosU * cosV * cos7U5V * (5 * sinV * cos7U5V + cosV * (sin7U5V + 2)) - sinV * (7 * cosU * cos7U5V - sinU * (sin7U5V + 2)) * (5 * cosV * cos7U5V - sinV * (sin7U5V + 2));
 }
 
-double whirligigSurfaceNormalZ(double u, double v) {
-  return sin(u) * sin(v) * (5 * sin(v) * cos(7 * u + 5 * v) + cos(v) * (sin(7 * u + 5 * v) + 2)) * (7 * cos(u) * cos(7 * u + 5 * v) - sin(u) * (sin(7 * u + 5 * v) + 2)) - cos(u) * sin(v) * (7 * sin(u) * cos(7 * u + 5 * v) + cos(u) * (sin(7 * u + 5 * v) + 2)) * (5 * sin(v) * cos(7 * u + 5 * v) + cos(v) * (sin(7 * u + 5 * v) + 2));
+double whirligigSurfaceNormalZ(double cosU, double sinU, double cosV, double sinV, double cos7U5V, double sin7U5V) {
+  return sinU * sinV * (5 * sinV * cos7U5V + cosV * (sin7U5V + 2)) * (7 * cosU * cos7U5V - sinU * (sin7U5V + 2)) - cosU * sinV * (7 * sinU * cos7U5V + cosU * (sin7U5V + 2)) * (5 * sinV * cos7U5V + cosV * (sin7U5V + 2));
 }
 
-Vector3D computeWhirligigSurfaceNormalVersor(double u, double v) {
+Vector3D computeWhirligigSurfaceNormalVersor(double cosU, double sinU, double cosV, double sinV, double cos7U5V, double sin7U5V) {
   struct Vector3D vector;
   struct Vector3D versor;
 
-  vector.x = whirligigSurfaceNormalX(u, v);
-  vector.y = whirligigSurfaceNormalY(u, v);
-  vector.z = whirligigSurfaceNormalZ(u, v);
+  vector.x = whirligigSurfaceNormalX(cosU, sinU, cosV, sinV, cos7U5V, sin7U5V);
+  vector.y = whirligigSurfaceNormalY(cosU, sinU, cosV, sinV, cos7U5V, sin7U5V);
+  vector.z = whirligigSurfaceNormalZ(cosU, sinU, cosV, sinV, cos7U5V, sin7U5V);
 
   double vectorMagnitude = magnitude(vector);
 
@@ -410,6 +451,22 @@ Vector3D computeWhirligigSurfaceNormalVersor(double u, double v) {
   versor.z = vector.z / vectorMagnitude;
 
   return versor;
+}
+
+void precomputeWhirligigData(double*** precomputedDataMatrix) {
+  for (int uIndex = 0; uIndex < WHIRLIGIG_U_STEPS_COUNT; uIndex += 1) {
+    for (int vIndex = 0; vIndex < WHIRLIGIG_V_STEPS_COUNT; vIndex += 1) {
+      double u = WHIRLIGIG_U_INTERVAL_START + (double)uIndex * WHIRLIGIG_U_INTERVAL_STEP;
+      double v = WHIRLIGIG_V_INTERVAL_START + (double)vIndex * WHIRLIGIG_V_INTERVAL_STEP;
+
+      precomputedDataMatrix[uIndex][vIndex][0] = cos(u);
+      precomputedDataMatrix[uIndex][vIndex][1] = sin(u);
+      precomputedDataMatrix[uIndex][vIndex][2] = cos(v);
+      precomputedDataMatrix[uIndex][vIndex][3] = sin(v);
+      precomputedDataMatrix[uIndex][vIndex][4] = cos(7 * u + 5 * v);
+      precomputedDataMatrix[uIndex][vIndex][5] = sin(7 * u + 5 * v);
+    }
+  }
 }
 
 /* Helpers */
@@ -460,6 +517,7 @@ void render(
     Vector3D lightPoint,
     double depthBufferMatrix[][CANVAS_WIDTH],
     double absoluteIntensityMatrix[][CANVAS_WIDTH],
+    double*** precomputedDataMatrix,
     double xAngle = 0,
     double yAngle = 0,
     double zAngle = 0) {
@@ -471,9 +529,11 @@ void render(
       uIntervalStart,
       uIntervalEnd,
       uIntervalStep,
+      uIntervalStepsCount,
       vIntervalStart,
       vIntervalEnd,
-      vIntervalStep;
+      vIntervalStep,
+      vIntervalStepsCount;
 
   switch (surfaceType) {
     case Toroid:
@@ -483,9 +543,11 @@ void render(
       uIntervalStart = TOROID_U_INTERVAL_START;
       uIntervalEnd = TOROID_U_INTERVAL_END;
       uIntervalStep = TOROID_U_INTERVAL_STEP;
+      uIntervalStepsCount = TOROID_U_STEPS_COUNT;
       vIntervalStart = TOROID_V_INTERVAL_START;
       vIntervalEnd = TOROID_V_INTERVAL_END;
       vIntervalStep = TOROID_V_INTERVAL_STEP;
+      vIntervalStepsCount = TOROID_V_STEPS_COUNT;
 
       break;
     case Mobius:
@@ -495,9 +557,11 @@ void render(
       uIntervalStart = MOBIUS_U_INTERVAL_START;
       uIntervalEnd = MOBIUS_U_INTERVAL_END;
       uIntervalStep = MOBIUS_U_INTERVAL_STEP;
+      uIntervalStepsCount = MOBIUS_U_STEPS_COUNT;
       vIntervalStart = MOBIUS_V_INTERVAL_START;
       vIntervalEnd = MOBIUS_V_INTERVAL_END;
       vIntervalStep = MOBIUS_V_INTERVAL_STEP;
+      vIntervalStepsCount = MOBIUS_V_STEPS_COUNT;
 
       break;
     case Whirligig:
@@ -507,31 +571,37 @@ void render(
       uIntervalStart = WHIRLIGIG_U_INTERVAL_START;
       uIntervalEnd = WHIRLIGIG_U_INTERVAL_END;
       uIntervalStep = WHIRLIGIG_U_INTERVAL_STEP;
+      uIntervalStepsCount = WHIRLIGIG_U_STEPS_COUNT;
       vIntervalStart = WHIRLIGIG_V_INTERVAL_START;
       vIntervalEnd = WHIRLIGIG_V_INTERVAL_END;
       vIntervalStep = WHIRLIGIG_V_INTERVAL_STEP;
+      vIntervalStepsCount = WHIRLIGIG_V_STEPS_COUNT;
 
       break;
   }
 
-  for (double u = uIntervalStart; u < uIntervalEnd; u = u + uIntervalStep) {
-    for (double v = vIntervalStart; v < vIntervalEnd; v = v + vIntervalStep) {
+  for (int uIndex = 0; uIndex < uIntervalStepsCount; uIndex++) {
+    double u = uIntervalStart + (double)uIndex * uIntervalStep;
+
+    for (int vIndex = 0; vIndex < vIntervalStepsCount; vIndex++) {
       struct Vector3D surfacePoint, surfaceNormal;
+
+      double v = vIntervalStart + (double)vIndex * vIntervalStep;
 
       switch (surfaceType) {
         case Toroid:
-          surfacePoint = computeToroidalSurfacePoint(TOROID_EXTERNAL_RADIUS, TOROID_INTERNAL_RADIUS, u, v);
-          surfaceNormal = computeToroidalSurfaceNormalVersor(TOROID_EXTERNAL_RADIUS, TOROID_INTERNAL_RADIUS, u, v);
+          surfacePoint = computeToroidalSurfacePoint(TOROID_EXTERNAL_RADIUS, TOROID_INTERNAL_RADIUS, precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3]);
+          surfaceNormal = computeToroidalSurfaceNormalVersor(TOROID_EXTERNAL_RADIUS, TOROID_INTERNAL_RADIUS, precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3]);
 
           break;
         case Mobius:
-          surfacePoint = computeMobiusSurfacePoint(u, v);
-          surfaceNormal = computeMobiusSurfaceNormalVersor(u, v);
+          surfacePoint = computeMobiusSurfacePoint(v, precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3]);
+          surfaceNormal = computeMobiusSurfaceNormalVersor(v, precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3]);
 
           break;
         case Whirligig:
-          surfacePoint = computeWhirligigSurfacePoint(u, v);
-          surfaceNormal = computeWhirligigSurfaceNormalVersor(u, v);
+          surfacePoint = computeWhirligigSurfacePoint(precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3], precomputedDataMatrix[uIndex][vIndex][5]);
+          surfaceNormal = computeWhirligigSurfaceNormalVersor(precomputedDataMatrix[uIndex][vIndex][0], precomputedDataMatrix[uIndex][vIndex][1], precomputedDataMatrix[uIndex][vIndex][2], precomputedDataMatrix[uIndex][vIndex][3], precomputedDataMatrix[uIndex][vIndex][4], precomputedDataMatrix[uIndex][vIndex][5]);
 
           break;
       }
@@ -596,6 +666,57 @@ void print(
 int main() {
   double depthBufferMatrix[CANVAS_HEIGHT][CANVAS_WIDTH];
   double absoluteIntensityMatrix[CANVAS_HEIGHT][CANVAS_WIDTH];
+  double*** precomputedDataMatrix;
+
+  /* Precomputing data */
+
+  int uStepsCount, vStepsCount, precomputedDataCount;
+
+  switch (SURFACE) {
+    case Toroid:
+      uStepsCount = TOROID_U_STEPS_COUNT;
+      vStepsCount = TOROID_V_STEPS_COUNT;
+      precomputedDataCount = TOROID_PRECOMPUTED_DATA_COUNT;
+
+      break;
+    case Mobius:
+      uStepsCount = MOBIUS_U_STEPS_COUNT;
+      vStepsCount = MOBIUS_V_STEPS_COUNT;
+      precomputedDataCount = MOBIUS_PRECOMPUTED_DATA_COUNT;
+
+      break;
+    case Whirligig:
+      uStepsCount = WHIRLIGIG_U_STEPS_COUNT;
+      vStepsCount = WHIRLIGIG_V_STEPS_COUNT;
+      precomputedDataCount = WHIRLIGIG_PRECOMPUTED_DATA_COUNT;
+
+      break;
+  }
+
+  precomputedDataMatrix = new double**[uStepsCount];
+
+  for (int uIndex = 0; uIndex < uStepsCount; uIndex++) {
+    precomputedDataMatrix[uIndex] = new double*[vStepsCount];
+
+    for (int vIndex = 0; vIndex < vStepsCount; vIndex++) {
+      precomputedDataMatrix[uIndex][vIndex] = new double[precomputedDataCount];
+    }
+  }
+
+  switch (SURFACE) {
+    case Toroid:
+      precomputeToroidalData(precomputedDataMatrix);
+
+      break;
+    case Mobius:
+      precomputeMobiusData(precomputedDataMatrix);
+
+      break;
+    case Whirligig:
+      precomputeWhirligigData(precomputedDataMatrix);
+
+      break;
+  }
 
   /* Camera point */
 
@@ -656,6 +777,7 @@ int main() {
         lightPoint,
         depthBufferMatrix,
         absoluteIntensityMatrix,
+        precomputedDataMatrix,
         xAngle,
         yAngle,
         zAngle);
