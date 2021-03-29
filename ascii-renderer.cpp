@@ -148,9 +148,9 @@ Vector3D computeVersor(Vector3D vector) {
   double length = magnitude(vector);
 
   if (length == 0) {
-    versor.x = vector.x / length;
-    versor.y = vector.y / length;
-    versor.z = vector.z / length;
+    versor.x = 0;
+    versor.y = 0;
+    versor.z = 0;
 
     return versor;
   }
@@ -303,6 +303,14 @@ Vector3D computeToroidalSurfaceNormalVersor(double R, double r, double cosU, dou
 
   double vectorMagnitude = magnitude(vector);
 
+  if (vectorMagnitude == 0) {
+    versor.x = 0;
+    versor.y = 0;
+    versor.z = 0;
+
+    return versor;
+  }
+
   versor.x = vector.x / vectorMagnitude;
   versor.y = vector.y / vectorMagnitude;
   versor.z = vector.z / vectorMagnitude;
@@ -372,6 +380,14 @@ Vector3D computeMobiusSurfaceNormalVersor(double v, double cosU, double sinU, do
   vector.z = mobiusSurfaceNormalZ(v, cosUHalf);
 
   double vectorMagnitude = magnitude(vector);
+
+  if (vectorMagnitude == 0) {
+    versor.x = 0;
+    versor.y = 0;
+    versor.z = 0;
+
+    return versor;
+  }
 
   versor.x = vector.x / vectorMagnitude;
   versor.y = vector.y / vectorMagnitude;
@@ -446,6 +462,14 @@ Vector3D computeWhirligigSurfaceNormalVersor(double cosU, double sinU, double co
 
   double vectorMagnitude = magnitude(vector);
 
+  if (vectorMagnitude == 0) {
+    versor.x = 0;
+    versor.y = 0;
+    versor.z = 0;
+
+    return versor;
+  }
+
   versor.x = vector.x / vectorMagnitude;
   versor.y = vector.y / vectorMagnitude;
   versor.z = vector.z / vectorMagnitude;
@@ -495,7 +519,7 @@ char computeIntensityCharacter(double intensity, double intensityMaxValue = 1) {
   int charactersCount = 12;
   char characters[] = {'.', ',', '-', '~', ':', ';', '=', '!', '*', '#', '$', '@'};
 
-  int characterIndex = round(intensity / intensityMaxValue * (charactersCount - 1));
+  int characterIndex = intensityMaxValue == 0 ? 0 : round(intensity / intensityMaxValue * (charactersCount - 1));
 
   return characters[characterIndex];
 }
